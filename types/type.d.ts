@@ -13,7 +13,7 @@ enum Subject {
   
   type Companion = Models.DocumentList<Models.Document> & {
     $id: string;
-    name: string;
+    title: string;
     subject: Subject;
     topic: string;
     duration: number;
@@ -21,7 +21,7 @@ enum Subject {
   };
   
   interface CreateCompanion {
-    name: string;
+    title: string;
     subject: string;
     topic: string;
     voice: string;

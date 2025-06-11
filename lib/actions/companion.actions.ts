@@ -2,36 +2,35 @@
 
 import { createClient } from "@/utils/supabase/client";
 import { revalidatePath } from "next/cache";
+import { getUser } from "@/utils/supabase/server";
 
 export const createCompanion = async (formData: CreateCompanion) => {
     const supabase = createClient();
-    const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+    const user = await getUser();
 
 
     const { data, error } = await supabase
         .from('companions')
-        .insert({...formData, author })
+        .insert({ ...formData, user_id: user.id })
         .select();
 
-    if(error || !data) throw new Error(error?.message || 'Failed to create a companion');
+    if (error || !data) throw new Error(error?.message || 'Failed to create a companion');
 
     return data[0];
 }
 
 export const getAllCompanions = async ({ limit = 10, page = 1, subject, topic }: GetAllCompanions) => {
     const supabase = createClient();
+    const user = await getUser();
 
-    let query = supabase.from('companions').select();
+    let query = supabase.from('companions').select() .eq('id', user.id);;
 
-    if(subject && topic) {
+    if (subject && topic) {
         query = query.ilike('subject', `%${subject}%`)
             .or(`topic.ilike.%${topic}%,name.ilike.%${topic}%`)
-    } else if(subject) {
+    } else if (subject) {
         query = query.ilike('subject', `%${subject}%`)
-    } else if(topic) {
+    } else if (topic) {
         query = query.or(`topic.ilike.%${topic}%,name.ilike.%${topic}%`)
     }
 
@@ -39,7 +38,7 @@ export const getAllCompanions = async ({ limit = 10, page = 1, subject, topic }:
 
     const { data: companions, error } = await query;
 
-    if(error) throw new Error(error.message);
+    if (error) throw new Error(error.message);
 
     return companions;
 }
@@ -52,40 +51,37 @@ export const getCompanion = async (id: string) => {
         .select()
         .eq('id', id);
 
-    if(error) return console.log(error);
+    if (error) return console.log(error);
 
     return data[0];
 }
 
 export const addToSessionHistory = async (companionId: string) => {
     const supabase = createClient();
-    const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+    const user = await getUser();
     const { data, error } = await supabase.from('session_history')
         .insert({
             companion_id: companionId,
             user_id: user.id,
         })
 
-    if(error) throw new Error(error.message);
+    if (error) throw new Error(error.message);
 
     return data;
 }
 
-export const getRecentSessions = async (limit = 10) => {
-    const supabase = createClient();
-    const { data, error } = await supabase
-        .from('session_history')
-        .select(`companions:companion_id (*)`)
-        .order('created_at', { ascending: false })
-        .limit(limit)
+// export const getRecentSessions = async (limit = 10) => {
+//     const supabase = createClient();
+//     const { data, error } = await supabase
+//         .from('session_history')
+//         .select(`companions:companion_id (*)`)
+//         .order('created_at', { ascending: false })
+//         .limit(limit)
 
-    if(error) throw new Error(error.message);
+//     if (error) throw new Error(error.message);
 
-    return data.map(({ companions }) => companions);
-}
+//     return data.map(({ companions }) => companions);
+// }
 
 export const getUserSessions = async (userId: string, limit = 10) => {
     const supabase = createClient();
@@ -96,30 +92,27 @@ export const getUserSessions = async (userId: string, limit = 10) => {
         .order('created_at', { ascending: false })
         .limit(limit)
 
-    if(error) throw new Error(error.message);
+    if (error) throw new Error(error.message);
 
     return data.map(({ companions }) => companions);
 }
 
-export const getUserCompanions = async (userId: string) => {
+export const getUserCompanions = async () => {
+    const user = await getUser();
     const supabase = createClient();
     const { data, error } = await supabase
         .from('companions')
         .select()
-        .eq('author', userId)
+        .eq('user_id', user.id)
 
-    if(error) throw new Error(error.message);
+    if (error) throw new Error(error.message);
 
     return data;
 }
 
 export const newCompanionPermissions = async () => {
     const supabase = createClient();
-    const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-   
+    const user = await getUser();
 
     let limit = 0;
 
@@ -131,72 +124,66 @@ export const newCompanionPermissions = async () => {
     //     limit = 10;
     // }
 
-    const { data, error } = await supabase
-        .from('companions')
-        .select('id', { count: 'exact' })
-        .eq('author', user.id)
+    // const { data, error } = await supabase
+    //     .from('companions')
+    //     .select('id', { count: 'exact' })
+    //     .eq('user_id', user.id)
 
-    if(error) throw new Error(error.message);
+    // if (error) throw new Error(error.message);
 
-    const companionCount = data?.length;
+    // const companionCount = data?.length;
 
-    if(companionCount >= limit) {
-        return false
-    } else {
-        return true;
-    }
+    // if (companionCount >= limit) {
+    //     return false
+    // } else {
+    //     return true;
+    // }
+    return true;
 }
 
 // Bookmarks
 export const addBookmark = async (companionId: string, path: string) => {
     const supabase = createClient();
-    const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-  if (!user.id) return;
-  const { data, error } = await supabase.from("bookmarks").insert({
-    companion_id: companionId,
-    user_id: user.id,
-  });
-  if (error) {
-    throw new Error(error.message);
-  }
-  // Revalidate the path to force a re-render of the page
+    const user = await getUser();
+    if (!user.id) return;
+    const { data, error } = await supabase.from("bookmarks").insert({
+        companion_id: companionId,
+        user_id: user.id,
+    });
+    if (error) {
+        throw new Error(error.message);
+    }
+    // Revalidate the path to force a re-render of the page
 
-  revalidatePath(path);
-  return data;
+    revalidatePath(path);
+    return data;
 };
 
 export const removeBookmark = async (companionId: string, path: string) => {
     const supabase = createClient();
-    const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-  if (!user.id) return;
-  const { data, error } = await supabase
-    .from("bookmarks")
-    .delete()
-    .eq("companion_id", companionId)
-    .eq("user_id", user.id);
-  if (error) {
-    throw new Error(error.message);
-  }
-  revalidatePath(path);
-  return data;
+    const user = await getUser();
+    const { data, error } = await supabase
+        .from("bookmarks")
+        .delete()
+        .eq("companion_id", companionId)
+        .eq("user_id", user.id);
+    if (error) {
+        throw new Error(error.message);
+    }
+    revalidatePath(path);
+    return data;
 };
 
 // It's almost the same as getUserCompanions, but it's for the bookmarked companions
 export const getBookmarkedCompanions = async (userId: string) => {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("bookmarks")
-    .select(`companions:companion_id (*)`) // Notice the (*) to get all the companion data
-    .eq("user_id", userId);
-  if (error) {
-    throw new Error(error.message);
-  }
-  // We don't need the bookmarks data, so we return only the companions
-  return data.map(({ companions }) => companions);
+    const supabase = createClient();
+    const { data, error } = await supabase
+        .from("bookmarks")
+        .select(`companions:companion_id (*)`) // Notice the (*) to get all the companion data
+        .eq("user_id", userId);
+    if (error) {
+        throw new Error(error.message);
+    }
+    // We don't need the bookmarks data, so we return only the companions
+    return data.map(({ companions }) => companions);
 };

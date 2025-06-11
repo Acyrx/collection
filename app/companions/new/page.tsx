@@ -1,25 +1,21 @@
-'use client'
+'use server'
 import CompanionForm from "@/components/companion/CompanionForm";
-import { createClient } from "@/utils/supabase/client";
 import {redirect} from "next/navigation";
 import {newCompanionPermissions} from "@/lib/actions/companion.actions";
 import Image from "next/image";
 import Link from "next/link";
+import { getUser } from "@/utils/supabase/server";
 
 const NewCompanion = async () => {
-    const supabase = createClient();
-    const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-      console.log(user)
+    const user = await getUser();
+    console.log(user)
     if(!user.id) redirect('/login');
 
     const canCreateCompanion = await newCompanionPermissions();
 
     return (
-        <main className="min-lg:w-1/3 min-md:w-2/3 items-center justify-center">
-            {canCreateCompanion ? (
+        <main className="min-lg:w-1/3 min-md:w-2/3 items-center justify-center ml-[400px]">
+         {canCreateCompanion ? (
                 <article className="w-full gap-4 flex flex-col">
                     <h1>Companion Builder</h1>
 

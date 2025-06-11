@@ -37,7 +37,7 @@ const sidebarItems = [
       items: [
         { title: "All", url: "#" },
         { title: "Recent", url: "#" },
-        { title: "Updates", url: "#", badge: "2" },
+        { title: "New", url: "#", badge: "2" },
       ],
     },
     {
@@ -48,37 +48,7 @@ const sidebarItems = [
         { title: "Pdf - Questions", url: "/pdf-question", badge: "3" },
         { title: "Quiz - Whiz", url: "/quiz-whiz" },
       ],
-    },
-    {
-      title: "Projects",
-      icon: <Layers />,
-      badge: "4",
-      items: [
-        { title: "Active Projects", url: "#", badge: "4" },
-        { title: "Archived", url: "#" },
-        { title: "Templates", url: "#" },
-      ],
-    },
-    {
-      title: "Community",
-      icon: <Users />,
-      items: [
-        { title: "Explore", url: "#" },
-        { title: "Following", url: "#" },
-        { title: "Challenges", url: "#" },
-        { title: "Events", url: "#" },
-      ],
-    },
-    {
-      title: "Resources",
-      icon: <Bookmark />,
-      items: [
-        { title: "Stock Photos", url: "#" },
-        { title: "Fonts", url: "#" },
-        { title: "Icons", url: "#" },
-        { title: "Templates", url: "#" },
-      ],
-    },
+    }
   ]
 
 

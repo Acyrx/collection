@@ -4,6 +4,7 @@ import {redirect} from "next/navigation";
 import {getSubjectColor} from "@/lib/utils";
 import Image from "next/image";
 import CompanionComponent from "@/components/companion/CompanionComponent";
+import { getUser } from "@/utils/supabase/server";
 
 interface CompanionSessionPageProps {
     params: Promise<{ id: string}>;
@@ -13,19 +14,17 @@ const CompanionSession = async ({ params }: CompanionSessionPageProps) => {
     const { id } = await params;
     const companion = await getCompanion(id);
     const supabase = createClient();
-    const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+    const user = await getUser();
+    console.log(user)
 
     const { name, subject, title, topic, duration } = companion;
 
-    if(!user) redirect('/sign-in');
-    if(!name) redirect('/companions')
+    if(!user) redirect('/login');
+    if(!title) redirect('/companions')
 
     return (
         <main>
-            <article className="flex rounded-border justify-between p-6 max-md:flex-col">
+            <article className="flex rounded-border justify-between p-6 max-md:flex-col ml-[400px]">
                 <div className="flex items-center gap-2">
                     <div className="size-[72px] flex items-center justify-center rounded-lg max-md:hidden" style={{ backgroundColor: getSubjectColor(subject)}}>
                         <Image src={`/icons/${subject}.svg`} alt={subject} width={35} height={35} />
