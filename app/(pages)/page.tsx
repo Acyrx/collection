@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { useEffect, useState } from 'react';
-import { signout } from './login/actions';
+import { signout } from '../(auth)/login/actions';
 
 export default function Home() {
   const router = useRouter();
