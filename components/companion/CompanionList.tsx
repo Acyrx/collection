@@ -15,7 +15,7 @@ import Image from "next/image"
 import CompanionForm from "./CompanionForm"
 import Link from "next/link"
 import User from "../user"
-import { signout } from '@/app/login/actions';
+import { signout } from '@/app/(auth)/actionslogin/actions';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import {
