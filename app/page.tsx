@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { signout } from '../(auth)/login/actions';
+import { signout } from './login/actions';
 import { createClient } from '@/utils/supabase/client';
 import { getReviews, createReview, updateReview, deleteReview } from '@/lib/actions/companion.actions';
 import { useRouter } from 'next/navigation';
