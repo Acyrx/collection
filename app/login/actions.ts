@@ -42,7 +42,7 @@ export async function signup(formData: FormData) {
   }
 
   revalidatePath('/companions', 'layout')
-  redirect('/companion')
+  redirect('/companions')
 }
 
 

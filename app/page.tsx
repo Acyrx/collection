@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
 import { Pencil, Trash2, Save, X } from 'lucide-react';
+import Link from 'next/link';
 
 
 export default function ReviewPage() {
@@ -93,7 +94,8 @@ export default function ReviewPage() {
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl">
-      <h1 className="text-3xl font-bold mb-6">Feedback & Suggestions</h1>
+      <Link href="/companions" className='p-4 bg-blue-500 text-white font-bold rounded-full hover:bg-blue-600 transition-colors'>Home</Link>
+      <h1 className="text-3xl font-bold mb-6 mt-8">Feedback & Suggestions</h1>
       
       <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-6 mb-8">
         <h2 className="text-xl font-semibold mb-4">Share Your Thoughts</h2>
