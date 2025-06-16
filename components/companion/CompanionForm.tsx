@@ -25,7 +25,7 @@ import {
 import { subjects } from "@/constants"
 import { Textarea } from "@/components/ui/textarea"
 import { createCompanion } from "@/lib/actions/companion.actions"
-import { redirect } from "next/navigation"
+import { redirect, useRouter } from "next/navigation"
 import { Loader2, Plus } from "lucide-react"
 import { useState } from "react"
 
@@ -36,10 +36,12 @@ const formSchema = z.object({
   voice: z.string().min(1, { message: 'Voice is required' }),
   style: z.string().min(1, { message: 'Style is required' }),
   duration: z.coerce.number().min(1, { message: 'Duration must be at least 1 minute' }).max(120, { message: 'Maximum duration is 120 minutes' }),
+  audience: z.string().min(1, { message: 'Audience is required' }), // Added audience field
 })
 
-const CompanionForm = () => {
+const CompanionForm = ({ onSuccess }: { onSuccess?: () => void }) => {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSpecific, setIsSpecific] = useState(false)
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -50,15 +52,24 @@ const CompanionForm = () => {
       voice: '',
       style: '',
       duration: 15,
+      audience: '', // Added default value for audience
     },
   })
+  const router = useRouter()
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true)
     try {
       const companion = await createCompanion(values)
       if (companion) {
-        redirect(`/companions/${companion.id}`)
+        onSuccess?.()
+        if (isSpecific) {
+          router.push(`/subject/${companion.id}`)
+          redirect(`/subject/${companion.id}`)
+        } else {
+          router.push(`/companions/${companion.id}`)
+          redirect(`/companions/${companion.id}`)
+        }
       } else {
         throw new Error('Failed to create companion')
       }
@@ -69,214 +80,287 @@ const CompanionForm = () => {
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-6">
+    <div className="w-full">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="space-y-6"
+        className="space-y-8"
       >
-        <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">Create New Companion</h1>
-          <p className="text-muted-foreground">
+        <div className="space-y-2">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Create New Companion</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             Customize your AI learning assistant with the perfect settings
           </p>
         </div>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            {/* Main Card */}
+            <div className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-800 space-y-6">
               {/* Title Field */}
               <FormField
                 control={form.control}
                 name="title"
                 render={({ field }) => (
-                  <FormItem className="md:col-span-2">
-                    <FormLabel>Companion Name</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Ex: Calculus Tutor"
-                        {...field}
-                        className="rounded-xl h-12 px-4"
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Give your companion a descriptive name
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Subject Field */}
-              <FormField
-                control={form.control}
-                name="subject"
-                render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Subject</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <div className="space-y-2">
+                      <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Companion Name
+                        <span className="text-red-500 ml-1">*</span>
+                      </FormLabel>
                       <FormControl>
-                        <SelectTrigger className="rounded-xl h-12 px-4">
-                          <SelectValue placeholder="Select a subject" />
-                        </SelectTrigger>
+                        <Input
+                          placeholder="Ex: Calculus Tutor"
+                          {...field}
+                          className="rounded-lg h-11 px-4 bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
                       </FormControl>
-                      <SelectContent className="rounded-xl">
-                        {subjects.map((subject) => (
-                          <SelectItem
-                            value={subject}
-                            key={subject}
-                            className="capitalize rounded-lg"
-                          >
-                            {subject}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>
-                      What subject will this companion teach?
-                    </FormDescription>
-                    <FormMessage />
+                      <FormDescription className="text-xs text-gray-500 dark:text-gray-400">
+                        Give your companion a descriptive name
+                      </FormDescription>
+                      <FormMessage className="text-xs text-red-500" />
+                    </div>
                   </FormItem>
                 )}
               />
 
-              {/* Duration Field */}
+              {/* Grid Section */}
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                {/* Subject Field */}
+                <FormField
+                  control={form.control}
+                  name="subject"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="space-y-2">
+                        <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Subject
+                          <span className="text-red-500 ml-1">*</span>
+                        </FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="rounded-lg h-11 px-4 bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                              <SelectValue placeholder="Select a subject" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg">
+                            {subjects.map((subject) => (
+                              <SelectItem
+                                value={subject}
+                                key={subject}
+                                className="rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
+                              >
+                                {subject}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage className="text-xs text-red-500" />
+                      </div>
+                    </FormItem>
+                  )}
+                />
+
+                {/* Duration Field */}
+                <FormField
+                  control={form.control}
+                  name="duration"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="space-y-2">
+                        <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                           Duration
+                          <span className="text-red-500 ml-1">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="1"
+                            max="120"
+                            placeholder="15"
+                            {...field}
+                            className="rounded-lg h-11 px-4 bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        </FormControl>
+                        <FormMessage className="text-xs text-red-500" />
+                      </div>
+                    </FormItem>
+                  )}
+                />
+
+                {/* Voice Field */}
+                <FormField
+                  control={form.control}
+                  name="voice"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="space-y-2">
+                        <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Voice Style
+                          <span className="text-red-500 ml-1">*</span>
+                        </FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="rounded-lg h-11 px-4 bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                              <SelectValue placeholder="Select a voice" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg">
+                            <SelectItem value="male" className="rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
+                              <div className="flex items-center gap-3">
+                                <div className="w-3 h-3 rounded-full bg-blue-500" />
+                                <span>Male Voice</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="female" className="rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
+                              <div className="flex items-center gap-3">
+                                <div className="w-3 h-3 rounded-full bg-pink-500" />
+                                <span>Female Voice</span>
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage className="text-xs text-red-500" />
+                      </div>
+                    </FormItem>
+                  )}
+                />
+
+                {/* Audience Field */}
+                <FormField
+                  control={form.control}
+                  name="audience"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="space-y-2">
+                        <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Audience
+                          <span className="text-red-500 ml-1">*</span>
+                        </FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="rounded-lg h-11 px-4 bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                              <SelectValue placeholder="Select an audience" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg">
+                            <SelectItem value="child" className="rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
+                              <div className="flex items-center gap-3">
+                                <div className="w-3 h-3 rounded-full bg-yellow-500" />
+                                <span>Child</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="adult" className="rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
+                              <div className="flex items-center gap-3">
+                                <div className="w-3 h-3 rounded-full bg-green-500" />
+                                <span>Adult</span>
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage className="text-xs text-red-500" />
+                      </div>
+                    </FormItem>
+                  )}
+                />
+
+                {/* Style Field */}
+                <FormField
+                  control={form.control}
+                  name="style"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="space-y-2">
+                        <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Teaching Style
+                          <span className="text-red-500 ml-1">*</span>
+                        </FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="rounded-lg h-11 px-4 bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                              <SelectValue placeholder="Select a style" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg">
+                            <SelectItem value="formal" className="rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
+                              <div className="flex items-center gap-3">
+                                <div className="w-3 h-3 rounded-full bg-purple-500" />
+                                <span>Formal</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="casual" className="rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
+                              <div className="flex items-center gap-3">
+                                <div className="w-3 h-3 rounded-full bg-green-500" />
+                                <span>Casual</span>
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage className="text-xs text-red-500" />
+                      </div>
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Topic Field */}
               <FormField
                 control={form.control}
-                name="duration"
+                name="topic"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Session Duration (minutes)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min="1"
-                        max="120"
-                        placeholder="15"
-                        {...field}
-                        className="rounded-xl h-12 px-4"
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Estimated length of each session
-                    </FormDescription>
-                    <FormMessage />
+                    <div className="space-y-2">
+                      <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Description
+                        <span className="text-red-500 ml-1">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Ex: Derivatives and Integrals, Quantum Physics Basics, French Conversation Practice"
+                          {...field}
+                          className="rounded-lg min-h-[120px] bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </FormControl>
+                      <FormDescription className="text-xs text-gray-500 dark:text-gray-400">
+                        What specific topics should the companion focus on?
+                      </FormDescription>
+                      <FormMessage className="text-xs text-red-500" />
+                    </div>
                   </FormItem>
                 )}
               />
+              
+              {/* Specific Checkbox */}
+              <div className="flex items-center space-x-2">
+                <input 
+                  type="checkbox" 
+                  id="specific-checkbox"
+                  checked={isSpecific}
+                  onChange={(e) => setIsSpecific(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <label htmlFor="specific-checkbox" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Specific AI Companion
+                </label>
+              </div>
             </div>
-
-            {/* Topic Field */}
-            <FormField
-              control={form.control}
-              name="topic"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Focus Area</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Ex: Derivatives and Integrals, Quantum Physics Basics, French Conversation Practice"
-                      {...field}
-                      className="rounded-xl min-h-[120px]"
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    What specific topics should the companion focus on?
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              {/* Voice Field */}
-              <FormField
-                control={form.control}
-                name="voice"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Voice Style</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="rounded-xl h-12 px-4">
-                          <SelectValue placeholder="Select a voice" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent className="rounded-xl">
-                        <SelectItem value="male" className="rounded-lg">
-                          <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-blue-500" />
-                            Male Voice
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="female" className="rounded-lg">
-                          <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-pink-500" />
-                            Female Voice
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>
-                      How should your companion sound?
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Style Field */}
-              <FormField
-                control={form.control}
-                name="style"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Teaching Style</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="rounded-xl h-12 px-4">
-                          <SelectValue placeholder="Select a style" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent className="rounded-xl">
-                        <SelectItem value="formal" className="rounded-lg">
-                          <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-purple-500" />
-                            Formal
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="casual" className="rounded-lg">
-                          <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-green-500" />
-                            Casual
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>
-                      How formal should the companion be?
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
+           
+            {/* Submit Button */}
             <motion.div
               whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.99 }}
-              className="pt-4"
+              whileTap={{ scale: 0.98 }}
+              className="pt-2"
             >
               <Button
                 type="submit"
-                className="w-full rounded-xl h-12 text-lg font-medium shadow-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                className="w-full rounded-lg h-12 text-base font-medium shadow-sm bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating...
+                    Creating Companion...
                   </>
                 ) : (
                   <>

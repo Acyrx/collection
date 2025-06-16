@@ -1,14 +1,14 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { cn, configureAssistant, getSubjectColor } from "@/lib/utils";
+import { cn, configureTutorAssistant, getSubjectColor } from "@/lib/utils";
 import { vapi } from "@/lib/vapi.sdk";
 import Image from "next/image";
 import Lottie, { LottieRefCurrentProps } from "lottie-react";
 import soundwaves from '@/constants/soundwaves.json';
 import { addToSessionHistory } from "@/lib/actions/companion.actions";
 import { toast } from 'sonner';
-import { FaUser, FaRobot, FaMicrophone, FaMicrophoneSlash, FaVolumeUp, FaVolumeMute, FaBars, FaTimes } from 'react-icons/fa';
+import { FaUser, FaRobot, FaMicrophone, FaMicrophoneSlash, FaVolumeUp, FaVolumeMute, FaBars, FaTimes, FaRedo } from 'react-icons/fa';
 import { IoMdCopy, IoMdCheckmark } from 'react-icons/io';
 import { BsChatDots } from 'react-icons/bs';
 import { summarizeChat } from '@/ai/flows/summarize';
@@ -20,6 +20,7 @@ enum CallStatus {
   CONNECTING = 'CONNECTING',
   ACTIVE = 'ACTIVE',
   FINISHED = 'FINISHED',
+  FAILED = 'FAILED', // Added new status for failed connections
 }
 
 interface SummaryData {
@@ -49,9 +50,22 @@ interface CompanionComponentProps {
   userImage?: string;
   style: string;
   voice: string;
+  audience?: "child" | "adult";
+  country: string;
 }
 
-const CompanionComponent = ({ companionId, subject, topic, title, userName, userImage, style, voice }: CompanionComponentProps) => {
+const CompanionComponent = ({ 
+  companionId, 
+  subject, 
+  topic, 
+  title, 
+  userName, 
+  userImage, 
+  style, 
+  voice,
+  audience = "adult",
+  country 
+}: CompanionComponentProps) => {
   const [callStatus, setCallStatus] = useState<CallStatus>(CallStatus.INACTIVE);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -68,6 +82,7 @@ const CompanionComponent = ({ companionId, subject, topic, title, userName, user
   const [isLoadingResponse, setIsLoadingResponse] = useState(false);
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   
   const lottieRef = useRef<LottieRefCurrentProps>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -110,6 +125,7 @@ const CompanionComponent = ({ companionId, subject, topic, title, userName, user
     const handlers = {
       'call-start': () => {
         setCallStatus(CallStatus.ACTIVE);
+        setConnectionError(null);
         startTimer();
       },
       'call-end': () => {
@@ -124,7 +140,13 @@ const CompanionComponent = ({ companionId, subject, topic, title, userName, user
       },
       'speech-start': () => setIsSpeaking(true),
       'speech-end': () => setIsSpeaking(false),
-      'error': (error: Error) => toast.error('Error: ' + error.message)
+      'error': (error: Error) => {
+        console.error('VAPI Error:', error);
+        setCallStatus(CallStatus.FAILED);
+        stopTimer();
+        setConnectionError(error.message || 'Connection failed. Please try again.');
+        toast.error('Connection error: ' + error.message);
+      }
     };
 
     Object.entries(handlers).forEach(([event, handler]) => vapi.on(event, handler as any));
@@ -165,13 +187,21 @@ const CompanionComponent = ({ companionId, subject, topic, title, userName, user
   };
 
   const handleCall = async () => {
-    setCallStatus(CallStatus.CONNECTING);
-    const assistantOverrides = {
-      variableValues: { subject, topic, style },
-      clientMessages: ["transcript"],
-      serverMessages: [],
-    };
-    vapi.start(configureAssistant(voice, style), assistantOverrides);
+    try {
+      setCallStatus(CallStatus.CONNECTING);
+      setConnectionError(null);
+      const assistantOverrides = {
+        variableValues: { subject, topic, style },
+        clientMessages: ["transcript"],
+        serverMessages: [],
+      };
+      await vapi.start(configureTutorAssistant(voice, style, topic, subject, audience, country), assistantOverrides);
+    } catch (error) {
+      console.error('Failed to start call:', error);
+      setCallStatus(CallStatus.FAILED);
+      setConnectionError('Failed to connect. Please try again.');
+      toast.error('Failed to start call. Please try again.');
+    }
   };
 
   const handleDisconnect = () => {
@@ -347,6 +377,12 @@ const CompanionComponent = ({ companionId, subject, topic, title, userName, user
             </div>
           )}
           
+          {connectionError && (
+            <div className="mt-3 p-2 bg-red-100 text-red-700 rounded text-xs md:text-sm text-center">
+              {connectionError}
+            </div>
+          )}
+          
           <div className="flex items-center justify-center gap-2 mt-4 md:mt-6 w-full">      
             <button
               onClick={callStatus === CallStatus.ACTIVE ? handleDisconnect : handleCall}
@@ -356,14 +392,21 @@ const CompanionComponent = ({ companionId, subject, topic, title, userName, user
                   ? "bg-red-500 hover:bg-red-600" 
                   : callStatus === CallStatus.CONNECTING 
                     ? "bg-blue-400 animate-pulse" 
-                    : "bg-blue-500 hover:bg-blue-600"
+                    : callStatus === CallStatus.FAILED
+                      ? "bg-orange-500 hover:bg-orange-600"
+                      : "bg-blue-500 hover:bg-blue-600"
               )}
             >
               {callStatus === CallStatus.ACTIVE
                 ? "End"
                 : callStatus === CallStatus.CONNECTING
                   ? 'Connecting...'
-                  : 'Start'
+                  : callStatus === CallStatus.FAILED
+                    ? <div className="flex items-center justify-center gap-2">
+                        <FaRedo size={14} />
+                        Try Again
+                      </div>
+                    : 'Start'
               }
             </button>
             
@@ -396,6 +439,7 @@ const CompanionComponent = ({ companionId, subject, topic, title, userName, user
             {callStatus === CallStatus.INACTIVE && "Session not started"}
             {callStatus === CallStatus.CONNECTING && "Connecting..."}
             {callStatus === CallStatus.FINISHED && `Session ended after ${formatTime(callDuration)}`}
+            {callStatus === CallStatus.FAILED && "Connection failed. Please try again."}
           </div>
         </div>
       </div>
@@ -469,6 +513,15 @@ const CompanionComponent = ({ companionId, subject, topic, title, userName, user
               <BsChatDots size={32} className="md:size-12 opacity-50 mb-3 md:mb-4" />
               <p className="text-sm md:text-lg">Start chatting with {title}</p>
               <p className="text-xs md:text-sm mt-1">Your messages will appear here</p>
+              {callStatus === CallStatus.FAILED && (
+                <button 
+                  onClick={handleCall}
+                  className="mt-4 flex items-center gap-2 bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600"
+                >
+                  <FaRedo size={14} />
+                  Try Connecting Again
+                </button>
+              )}
             </div>
           ) : (
             <div className="space-y-2 md:space-y-4">

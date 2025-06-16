@@ -1,99 +1,200 @@
 'use client';
 
-import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import { createClient } from '@/utils/supabase/client';
 import { useEffect, useState } from 'react';
+<<<<<<< HEAD:app/(pages)/page.tsx
 import { signout } from '../(auth)/login/actions';
+=======
+import { createClient } from '@/utils/supabase/client';
+import { getReviews, createReview, updateReview, deleteReview } from '@/lib/actions/companion.actions';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { format } from 'date-fns';
+import { Pencil, Trash2, Save, X } from 'lucide-react';
+>>>>>>> 9a0ba02 (mvp):app/page.tsx
 
-export default function Home() {
+export default function ReviewPage() {
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [suggestion, setSuggestion] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editText, setEditText] = useState('');
   const router = useRouter();
-  const [profile, setProfile] = useState(null);
   const supabase = createClient();
 
   useEffect(() => {
-    async function fetchProfile() {
-      // Get current user
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+    async function fetchData() {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
 
-      // Fetch profile from profile table
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-        console.log("User" , data)
-
-      if (error) {
-        console.error('Error fetching profile:', error.message);
-        return;
+      try {
+        const reviewsData = await getReviews();
+        setReviews(reviewsData || []);
+      } catch (error) {
+        console.error('Error loading reviews:', error);
       }
-
-      setProfile(data);
     }
 
-    fetchProfile();
-  }, [router, supabase]);
+    fetchData();
+  }, [supabase]);
 
-  const handleLogout = async () => {
-    await signout();
-    router.push('/login');
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!suggestion.trim() || !user) return;
+
+    setIsSubmitting(true);
+    try {
+      await createReview(suggestion, user.id);
+      setSuggestion('');
+      const updatedReviews = await getReviews();
+      setReviews(updatedReviews || []);
+    } catch (error) {
+      console.error('Error submitting review:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const startEditing = (review: any) => {
+    setEditingId(review.id);
+    setEditText(review.suggestion);
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setEditText('');
+  };
+
+  const handleUpdate = async (id: number) => {
+    if (!editText.trim() || !user) return;
+
+    try {
+      await updateReview(id, editText, user.id);
+      const updatedReviews = await getReviews();
+      setReviews(updatedReviews || []);
+      setEditingId(null);
+    } catch (error) {
+      console.error('Error updating review:', error);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!user) return;
+    if (!confirm('Are you sure you want to delete this review?')) return;
+
+    try {
+      await deleteReview(id, user.id);
+      const updatedReviews = await getReviews();
+      setReviews(updatedReviews || []);
+    } catch (error) {
+      console.error('Error deleting review:', error);
+    }
   };
 
   return (
-    <div className="flex flex-col min-h-screen items-center justify-between px-8 py-16 sm:px-20 font-sans bg-white dark:bg-black text-black dark:text-white transition-colors duration-300">
-      <header className="w-full max-w-4xl flex justify-between items-center mb-8">
-        <Image src="/next.svg" alt="Next.js Logo" width={120} height={30} />
-        <button
-          onClick={handleLogout}
-          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded transition"
-        >
-          Logout
-        </button>
-      </header>
-
-      <main className="flex flex-col items-center text-center max-w-2xl gap-6">
-        <h1 className="text-4xl font-bold">Welcome to Your Next.js App</h1>
-        <p className="text-lg text-gray-600 dark:text-gray-300">
-          You're authenticated via Supabase.
-        </p>
-
-        {profile ? (
-          <div className="mt-4">
-            <h2 className="text-2xl font-semibold">Hello, {profile.full_name || profile.username || 'User'}!</h2>
-            {/* Customize according to your profile fields */}
-            <p>Email: {profile.email || 'Not available'}</p>
+    <div className="container mx-auto py-8 px-4 max-w-4xl">
+      <h1 className="text-3xl font-bold mb-6">Feedback & Suggestions</h1>
+      
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-6 mb-8">
+        <h2 className="text-xl font-semibold mb-4">Share Your Thoughts</h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Textarea
+            value={suggestion}
+            onChange={(e) => setSuggestion(e.target.value)}
+            placeholder="What suggestions do you have for us?"
+            className="min-h-[120px]"
+            required
+          />
+          <div className="flex justify-end">
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
+            </Button>
           </div>
+        </form>
+      </div>
+
+      <div className="space-y-6">
+        <h2 className="text-2xl font-semibold">Recent Feedback</h2>
+        
+        {reviews.length === 0 ? (
+          <p className="text-gray-500 dark:text-gray-400">No feedback yet. Be the first to share!</p>
         ) : (
-          <p>Loading profile...</p>
+          <div className="space-y-4">
+            {reviews.map((review) => (
+              <div key={review.id} className="bg-white dark:bg-gray-900 rounded-lg shadow p-6 relative">
+                {editingId === review.id ? (
+                  <div className="space-y-4">
+                    <Textarea
+                      value={editText}
+                      onChange={(e) => setEditText(e.target.value)}
+                      className="min-h-[100px]"
+                    />
+                    <div className="flex justify-end gap-2">
+                      <Button 
+                        variant="outline" 
+                        onClick={cancelEditing}
+                        size="sm"
+                      >
+                        <X className="w-4 h-4 mr-2" /> Cancel
+                      </Button>
+                      <Button 
+                        onClick={() => handleUpdate(review.id)}
+                        size="sm"
+                      >
+                        <Save className="w-4 h-4 mr-2" /> Save
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-start gap-4">
+                      <Avatar>
+                        <AvatarImage src={review.profiles?.avatar_url} />
+                        <AvatarFallback>
+                          {review.profiles?.full_name?.charAt(0) || review.profiles?.username?.charAt(0) || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-medium">
+                            {review.profiles?.full_name || review.profiles?.username || 'Anonymous'}
+                          </h3>
+                          <span className="text-sm text-gray-500 dark:text-gray-400">
+                            {format(new Date(review.created_at), 'MMM d, yyyy')}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-gray-700 dark:text-gray-300">{review.suggestion}</p>
+                      </div>
+                    </div>
+                    {user?.id === review.user_id && (
+                      <div className="absolute top-4 right-4 flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => startEditing(review)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-red-500 hover:text-red-600"
+                          onClick={() => handleDelete(review.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
         )}
-
-        <div className="flex flex-col sm:flex-row gap-4 mt-6">
-          <a
-            href="https://nextjs.org/docs"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-blue-500 hover:bg-blue-600 text-white px-5 py-3 rounded transition"
-          >
-            📘 Read Docs
-          </a>
-          <a
-            href="https://vercel.com/templates?framework=next.js"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="border border-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 text-sm px-5 py-3 rounded transition"
-          >
-            🧩 Browse Templates
-          </a>
-        </div>
-      </main>
-
-      <footer className="text-sm text-gray-500 mt-16">
-        Built with ❤️ using Next.js and Supabase
-      </footer>
+      </div>
     </div>
   );
 }

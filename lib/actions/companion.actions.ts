@@ -11,7 +11,7 @@ export const createCompanion = async (formData: CreateCompanion) => {
 
     const { data, error } = await supabase
         .from('companions')
-        .insert({ ...formData, user_id: user.id })
+        .insert({ ...formData, user_id: user?.id })
         .select();
 
     if (error || !data) throw new Error(error?.message || 'Failed to create a companion');
@@ -62,7 +62,7 @@ export const addToSessionHistory = async (companionId: string) => {
     const { data, error } = await supabase.from('session_history')
         .insert({
             companion_id: companionId,
-            user_id: user.id,
+            user_id: user?.id,
         })
 
     if (error) throw new Error(error.message);
@@ -103,7 +103,7 @@ export const getUserCompanions = async () => {
     const { data, error } = await supabase
         .from('companions')
         .select()
-        .eq('user_id', user.id)
+        .eq('user_id', user?.id)
 
     if (error) throw new Error(error.message);
 
@@ -145,10 +145,10 @@ export const newCompanionPermissions = async () => {
 export const addBookmark = async (companionId: string, path: string) => {
     const supabase = createClient();
     const user = await getUser();
-    if (!user.id) return;
+    if (!user?.id) return;
     const { data, error } = await supabase.from("bookmarks").insert({
         companion_id: companionId,
-        user_id: user.id,
+        user_id: user?.id,
     });
     if (error) {
         throw new Error(error.message);
@@ -166,7 +166,7 @@ export const removeBookmark = async (companionId: string, path: string) => {
         .from("bookmarks")
         .delete()
         .eq("companion_id", companionId)
-        .eq("user_id", user.id);
+        .eq("user_id", user?.id);
     if (error) {
         throw new Error(error.message);
     }
@@ -187,3 +187,90 @@ export const getBookmarkedCompanions = async (userId: string) => {
     // We don't need the bookmarks data, so we return only the companions
     return data.map(({ companions }) => companions);
 };
+
+
+export async function createReview(suggestion: string, userId: string) {
+    const supabase = createClient();
+    
+    const { data, error } = await supabase
+      .from('review')
+      .insert([
+        { 
+          suggestion,
+          user_id: userId
+        }
+      ])
+      .select();
+  
+    if (error) {
+      console.error('Error creating review:', error);
+      throw error;
+    }
+  
+    return data;
+  }
+  
+  export async function getReviews() {
+    const supabase = createClient();
+    
+    const { data, error } = await supabase
+      .from('review')
+      .select(`
+        id,
+        created_at,
+        suggestion,
+        user_id,
+        profiles:user_id (username, full_name)
+      `)
+      .order('created_at', { ascending: false });
+  
+    if (error) {
+      console.error('Error fetching reviews:', error);
+      throw error;
+    }
+  
+    return data;
+  }
+
+
+  export async function updateReview(id: number, suggestion: string, userId: string) {
+    const supabase = createClient();
+    
+    const { data, error } = await supabase
+      .from('review')
+      .update({ suggestion })
+      .eq('id', id)
+      .eq('user_id', userId)
+      .select();
+  
+    if (error) throw error;
+    return data;
+  }
+  
+  export async function deleteReview(id: number, userId: string) {
+    const supabase = createClient();
+    
+    const { error } = await supabase
+      .from('review')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId);
+  
+    if (error) throw error;
+    return true;
+  }
+
+  export const deleteCompanion = async (id: string) => {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('companions')
+      .delete()
+      .eq('id', id);
+  
+    if (error) {
+      throw new Error(error.message);
+    }
+  
+    return true;
+  };
+  
