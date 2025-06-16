@@ -1,9 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-<<<<<<< HEAD:app/(pages)/page.tsx
 import { signout } from '../(auth)/login/actions';
-=======
 import { createClient } from '@/utils/supabase/client';
 import { getReviews, createReview, updateReview, deleteReview } from '@/lib/actions/companion.actions';
 import { useRouter } from 'next/navigation';
@@ -12,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
 import { Pencil, Trash2, Save, X } from 'lucide-react';
->>>>>>> 9a0ba02 (mvp):app/page.tsx
+
 
 export default function ReviewPage() {
   const [reviews, setReviews] = useState<any[]>([]);
