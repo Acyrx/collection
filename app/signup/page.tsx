@@ -38,7 +38,6 @@ export default function SignUp() {
     if (error) {
       alert(error.message);
     } else {
-      alert("Sign-up successful! Check your email for confirmation.");
       router.push("/login");
     }
   };
