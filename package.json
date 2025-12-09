@@ -33,6 +33,7 @@
     "@supabase/supabase-js": "^2.50.0",
     "@types/react-google-recaptcha": "^2.1.9",
     "@vapi-ai/web": "^2.3.5",
+    "@vercel/analytics": "^1.6.1",
     "axios": "^1.10.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
